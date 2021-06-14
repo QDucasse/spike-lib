@@ -1,0 +1,10 @@
+{
+    "C_Cpp.default.macFrameworkPath": [],
+    "C_Cpp.default.includePath": [
+        "riscv-isa-sim"
+    ],
+    "files.associations": {
+        "processor.h": "c",
+        "decode.h": "c"
+    }
+}
