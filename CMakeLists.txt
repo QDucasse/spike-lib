@@ -13,10 +13,13 @@ ExternalProject_Add(spike
    INSTALL_COMMAND echo)
 
 target_include_directories(spikelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spike-prefix/src/spike-build/build)
-target_include_directories(spikelib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/riscv-isa-sim/riscv
-${CMAKE_CURRENT_SOURCE_DIR}/riscv-isa-sim/softfloat
+target_include_directories(spikelib 
+PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/riscv-isa-sim/riscv
+    ${CMAKE_CURRENT_SOURCE_DIR}/riscv-isa-sim/softfloat
+    ${CMAKE_CURRENT_SOURCE_DIR}/riscv-isa-sim/fesvr
 )
 
 
    # add_library()
-# target_link_libraries(spikelib PRIVATE spike)
+target_link_libraries(spikelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spike-prefix/src/spike-build/device.o)
