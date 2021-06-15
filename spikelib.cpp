@@ -79,14 +79,26 @@ int main() {
         abstract_rti
         );
 
+    // Number of processors
     printf("Number of processors: %d\n", sim.nprocs());
-    processor_t *p = sim.get_core(size_t(0));   
-    reg_t reg = p->get_state()->pc;
+
+    // Extract the PC from the state of the processor
+    processor_t *proc = sim.get_core(size_t(0));   
+    reg_t reg = proc->get_state()->pc;
     printf("PC register value: %ld\n", reg);
+
+    // Print the content of the 32 general registers
     for (int i = 0; i < 32; i++) {
-        printf("XPR%d register value: %ld\n", i, p->get_state()->XPR[i]);
+        printf("XPR%d register value: %ld\n", i, proc->get_state()->XPR[i]);
     }
 
+    // Store one byte
+    const uint8_t stored_byte = 0x11;
+    proc->get_mmu()->store_uint8(0x1000, stored_byte);
+
+    // Load one byte
+    uint8_t loaded_byte = proc->get_mmu()->load_uint8(0x1000);
+    printf("Loaded bytes: %d\n", loaded_byte);
 
     return 0;
 }
