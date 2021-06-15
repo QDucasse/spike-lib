@@ -100,5 +100,34 @@ int main() {
     uint8_t loaded_byte = proc->get_mmu()->load_uint8(0x1000);
     printf("Loaded bytes: %d\n", loaded_byte);
 
+    // Load values in x0 and x1
+    proc->get_state()->XPR.write(size_t(14), 17);
+    proc->get_state()->XPR.write(size_t(15), 42);
+
+    // add a0,a0,a1 -> 952e
+    // uint16_t instr_add = 0x97ba;
+    uint16_t instr_mov = 0x3e85;
+
+    proc->get_mmu()->store_uint16(0x1000, instr_mov);
+    proc->get_mmu()->flush_icache();
+
+    auto i = proc->get_mmu()->load_insn(reg);
+    printf("%ud\n", i);
+    
+    while(proc->get_state()->pc == 0x1000){
+        printf("hello\n");
+        proc->step(size_t(1));
+    }
+
+    // Print the content of the 32 general registers
+    for (int i = 0; i < 32; i++) {
+        printf("XPR%d register value: %ld\n", i, proc->get_state()->XPR[i]);
+    }
+    reg = proc->get_state()->pc;
+    printf("PC register value: %ld\n", reg);
+
+    // Store instructions
+    // Flush instruction cache?
+
     return 0;
 }
