@@ -3,14 +3,20 @@ cmake_minimum_required(VERSION 3.1)
 project(SpikeLib VERSION 1.0
                  LANGUAGES C CXX)
 
-add_executable(spikelib spikelib.cpp)
+# add_executable(spikelib spikelib.cpp)
+add_library(spikelib SHARED spikelib.cpp c_wrapper.c)
+
+add_compile_options(-fPIC -fvisibility=hidden)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
 
 include(ExternalProject)
 
 ExternalProject_Add(spike
    SOURCE_DIR        ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim
    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim/configure
-   BUILD_COMMAND     make
+   BUILD_COMMAND     make CFLAGS=-fPIC 
    INSTALL_COMMAND   echo)
 
 target_include_directories(spikelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spike-prefix/src/spike-build)
