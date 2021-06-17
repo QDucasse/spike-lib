@@ -4,7 +4,7 @@ project(SpikeLib VERSION 1.0
                  LANGUAGES C CXX)
 
 # add_executable(spikelib spikelib.cpp)
-add_library(spikelib SHARED spikelib.cpp c_wrapper.c)
+add_library(spikelib SHARED spikelib.cpp)
 
 set(default_build_type "Debug")
 add_compile_options(-fPIC -fvisibility=hidden)
