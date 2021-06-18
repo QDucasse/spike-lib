@@ -21,7 +21,8 @@ extern "C" {
     int read_register(void* sim, int regid, void* value);
     int write_register(void* sim, int regid, void* value);
     const char* sp_strerror(int code);
-    int memory_write(void* sim, uint64_t address, uint64_t size, void* value);
+    int write_memory(void* sim, uint64_t address, uint64_t size, void* value);
+    int read_memory(void* sim, uint64_t address, uint64_t size, void* value);
 }
 
 // =====================================
@@ -31,7 +32,7 @@ extern "C" {
 std::vector<std::pair<reg_t, mem_t*>> initialize_mems(memory_region* memories, int regions_number) {
     std::vector<std::pair<reg_t, mem_t*>> res;
     // page-align base and size
-    // TODO in Pharo!
+    // TODO: in Pharo!
     // auto base0 = base, size0 = size;
     // size += base0 % PGSIZE;
     // base -= base0 % PGSIZE;
@@ -280,7 +281,7 @@ EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value)
             real_sim->get_core(0)->get_mmu()->store_uint32(address, *((uint32_t*) value));
             break;
         case 8:
-            real_sim->get_core(0)->get_mmu()->store_uint32(address, *((uint64_t*) value));
+            real_sim->get_core(0)->get_mmu()->store_uint64(address, *((uint64_t*) value));
             break;
         default:
             // If the size is not standard, store the bytes one by one
@@ -418,12 +419,33 @@ int main() {
 
 
     // Testing the memory read/write functions
-    uint8_t mem_write_byte = 0x11;
-    uint8_t mem_load_byte  = 0x00;
-    write_memory(sim, 0x1000, 1, (void*) &mem_write_byte);
-    read_memory(sim, 0x1000, 1, (void*) &mem_load_byte);
-    printf("Mem read/write test: %u\n", mem_load_byte);
+    // uint8_t
+    uint8_t mem_write_byte_8 = 0x11;
+    uint8_t mem_load_byte_8  = 0x00;
+    write_memory(sim, 0x1000, 1, (void*) &mem_write_byte_8);
+    read_memory(sim, 0x1000, 1, (void*) &mem_load_byte_8);
+    printf("Mem read/write 1 byte  test: 0x%x\n", mem_load_byte_8);
 
+    // uint16_t
+    uint16_t mem_write_byte_16 = 0x1111;
+    uint16_t mem_load_byte_16  = 0x0000;
+    write_memory(sim, 0x1030, 2, (void*) &mem_write_byte_16);
+    read_memory(sim, 0x1030, 2, (void*) &mem_load_byte_16);
+    printf("Mem read/write 2 bytes test: 0x%x\n", mem_load_byte_16);
+
+    // uint32_t
+    uint32_t mem_write_byte_32 = 0x11111111;
+    uint32_t mem_load_byte_32  = 0x00000000;
+    write_memory(sim, 0x1060, 4, (void*) &mem_write_byte_32);
+    read_memory(sim, 0x1060, 4, (void*) &mem_load_byte_32);
+    printf("Mem read/write 4 bytes test: 0x%x\n", mem_load_byte_32);
+
+    // uint64_t
+    uint64_t mem_write_byte_64 = 0x1111111111111111;
+    uint64_t mem_load_byte_64  = 0x0000000000000000;
+    write_memory(sim, 0x1120, 8, (void*) &mem_write_byte_64);
+    read_memory(sim, 0x1120, 8, (void*) &mem_load_byte_64);
+    printf("Mem read/write 8 bytes test: 0x%lx\n", mem_load_byte_64);
 
     return 0;
 }
