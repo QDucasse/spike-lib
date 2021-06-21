@@ -23,6 +23,7 @@ extern "C" {
     EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value);
     EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value);
     EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout, size_t max_instruction_number);
+    EXPORT void release_sim(void* sim);
 }
 
 // =====================================
@@ -71,6 +72,7 @@ typedef enum {
 
 typedef enum {
     SP_ERR_OK = 0,          // No error: everything was fine
+    SP_ERR_TIMEOUT,         // Execution timeout
     SP_ERR_NO_MEM,          // Out-Of-Memory error: uc_open(), uc_emulate()
     SP_ERR_READ_UNMAPPED,   // READ  on unmapped memory
     SP_ERR_WRITE_UNMAPPED,  // WRITE on unmapped memory
@@ -83,4 +85,6 @@ typedef enum {
     SP_ERR_READ_UNALIGNED,  // Unaligned READ
     SP_ERR_WRITE_UNALIGNED, // Unaligned WRITE
     SP_ERR_FETCH_UNALIGNED, // Unaligned FETCH
+    SP_ERR_UNKNOWN          // Other error
 } sp_err;
+

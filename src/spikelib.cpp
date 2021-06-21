@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include "processor.h"
 #include "devices.h"
 #include "memif.h"
@@ -56,6 +57,19 @@ void print_byte_array(uint8_t* byte_array, int size) {
         printf("%02X", byte_array[i]);
     }
     printf("\n");
+}
+
+// =====================================
+//         TIME FUNCTION
+// =====================================
+
+
+static inline int64_t get_clock_realtime(void)
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000000000LL + (tv.tv_usec * 1000);
 }
 
 // =====================================
@@ -140,6 +154,11 @@ EXPORT void* initialize_sim(memory_region* memories, int regions_number){
     return static_cast<void*>(sim);
 }
 
+EXPORT void release_sim(void* sim) {
+    delete((sim_t*) sim);
+}
+
+
 /* Read a value from a register into a buffer
    Arguments: sim (void *) - Pointer to the simulation 
 */
@@ -195,7 +214,7 @@ EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value) 
         default:
             // If the size is not standard, load the bytes one by one
             for (int i=0; i<size; i++) {
-                *((uint8_t*) value + i) = real_sim->get_core(0)->get_mmu()->load_uint8(address + i*8);
+                ((uint8_t*) value)[i] = real_sim->get_core(0)->get_mmu()->load_uint8(address + i);
             }
     }   
     return SP_ERR_OK;
@@ -220,7 +239,7 @@ EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value)
         default:
             // If the size is not standard, store the bytes one by one
             for (int i=0; i<size; i++) {
-                real_sim->get_core(0)->get_mmu()->store_uint8(address + i*8, *((uint8_t*) value + i));
+                real_sim->get_core(0)->get_mmu()->store_uint8(address + i, ((uint8_t*) value)[i]);
             }
     }   
     real_sim->get_core(0)->get_mmu()->flush_icache();
@@ -233,10 +252,30 @@ EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, 
     state_t* state = core->get_state();
     // Write the begin address to the PC
     write_register(sim, SPIKE_RISCV_REG_PC, &begin_address);
-    while(state->pc != end_address) {
+    // Initialize the timer
+    int64_t current_time = get_clock_realtime();
+    // Check for the end address to be ok, if not STOP execution directly
+    bool has_timed_out = false;
+    bool has_reached_count = false;
+    int instruction_count = 0;
+    while(state->pc != end_address && !has_timed_out && !has_reached_count) {
         core->step(1);
+        has_timed_out = !(((uint64_t)(get_clock_realtime() - current_time) < timeout) || timeout == 0);
+        has_reached_count = (++instruction_count == max_instruction_number) && (max_instruction_number != 0);
     }
-    return SP_ERR_OK;
+    
+    if(state->pc == end_address) {
+        return SP_ERR_OK;
+    }
+
+    if (has_reached_count) {
+        return SP_ERR_OK;
+    }
+    
+    if (has_timed_out) {
+        return SP_ERR_TIMEOUT;
+    }
+    return SP_ERR_UNKNOWN;
 }
 
 
@@ -245,7 +284,8 @@ EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, 
 // =====================================
 
 int main() {
-
+    // Simulation initialization
+    printf("%s\n", DEFAULT_ISA);
     void* content = calloc(1, 4096);
     memory_region region[] = { {.base = 0x1000, .size = 4096, .content = content} };
 
@@ -302,24 +342,17 @@ int main() {
         abstract_rti
     );
 
-    // Number of processors
-    printf("Number of processors: %d\n", sim->nprocs());
-
     // Extract the processor
     processor_t *proc = sim->get_core(size_t(0));
-
     // Print pc and registers
-    print_pc(proc);
-    print_registers(proc);
-
+    // print_pc(proc);
+    // print_registers(proc);
     // Store one byte
-    const uint8_t stored_byte = 0x11;
-    proc->get_mmu()->store_uint8(0x1000, stored_byte);
-
+    // const uint8_t stored_byte = 0x11;
+    // proc->get_mmu()->store_uint8(0x1000, stored_byte);
     // Load one byte
-    uint8_t loaded_byte = proc->get_mmu()->load_uint8(0x1000);
-    printf("Loaded bytes: %d\n", loaded_byte);
-
+    // uint8_t loaded_byte = proc->get_mmu()->load_uint8(0x1000);
+    // printf("Loaded bytes: %d\n", loaded_byte);
     // Load values in x6 and x7
     proc->get_state()->XPR.write(size_t(6), 17);
     proc->get_state()->XPR.write(size_t(7), 42);
@@ -331,37 +364,74 @@ int main() {
     // COMPRESSED mov a0 a5
     // uint16_t instr_mov = 0x3e85;
     // COMPLETE add x5, x6, x7
-    uint32_t instr_add = 0x007302B3;
+
+
+    // uint32_t instr_add = 0x007302B3;
+    // // ___________________________________
+
+    // // Load instruction and decode some information
+    // proc->get_mmu()->store_uint32(0x1000, instr_add);
+    // proc->get_mmu()->flush_icache();
+    // insn_fetch_t fetched_instr = proc->get_mmu()->load_insn(0x1000);
+    
+    // printf("INSTR: 0x%lx\n", fetched_instr.insn.bits());
+    // printf("RD:    %lu\n", fetched_instr.insn.rd());
+    // printf("RS1:   %lu\n", fetched_instr.insn.rs1());
+    // // Step to run ADD
+    // proc->step(size_t(1));
+    // print_registers(proc);
+
+
+    uint32_t instr_lui = 0x0004d3b7;
     // ___________________________________
 
     // Load instruction and decode some information
+    proc->get_mmu()->store_uint32(0x1000, instr_lui);
     proc->get_mmu()->flush_icache();
     insn_fetch_t fetched_instr = proc->get_mmu()->load_insn(0x1000);
-    printf("INSTR: %lx\n", fetched_instr.insn.bits());
+    
+    printf("INSTR: 0x%lx\n", fetched_instr.insn.bits());
     printf("RD:    %lu\n", fetched_instr.insn.rd());
     printf("RS1:   %lu\n", fetched_instr.insn.rs1());
-    // Step to run ADD
+    // Step to run 
+    proc->step(size_t(1));
+    print_registers(proc);
+
+
+    uint32_t instr_addiw = 0xccd3839b; 
+
+    // ___________________________________
+
+    // Load instruction and decode some information
+    proc->get_mmu()->store_uint32(0x1004, instr_addiw);
+    proc->get_mmu()->flush_icache();
+    fetched_instr = proc->get_mmu()->load_insn(0x1004);
+    
+    printf("INSTR: 0x%lx\n", fetched_instr.insn.bits());
+    printf("RD:    %lu\n", fetched_instr.insn.rd());
+    printf("RS1:   %lu\n", fetched_instr.insn.rs1());
+    // Step to run 
     proc->step(size_t(1));
     print_registers(proc);
 
     // Write the load instruction corresponding at address 1004 (new pc)
-    proc->get_state()->XPR.write(size_t(6), 16);
-    uint32_t instr_load = 6 << 15 | 0b011 << 12 | 7 << 7 | 0b0000011;
-    proc->get_mmu()->store_uint32(0x1004, instr_load);
+    // proc->get_state()->XPR.write(size_t(6), 16);
+    // uint32_t instr_load = 6 << 15 | 0b011 << 12 | 7 << 7 | 0b0000011;
+    // proc->get_mmu()->store_uint32(0x1004, instr_load);
 
-    // Load instruction and decode some information
-    proc->get_mmu()->flush_icache();
-    fetched_instr = proc->get_mmu()->load_insn(0x1004);
-    printf("INSTR: 0x%lx\n", fetched_instr.insn.bits());
-    printf("RD:    %lu\n", fetched_instr.insn.rd());
-    printf("RS1:   %lu\n", fetched_instr.insn.rs1());
+    // // Load instruction and decode some information
+    // proc->get_mmu()->flush_icache();
+    // fetched_instr = proc->get_mmu()->load_insn(0x1004);
+    // printf("INSTR: 0x%lx\n", fetched_instr.insn.bits());
+    // printf("RD:    %lu\n", fetched_instr.insn.rd());
+    // printf("RS1:   %lu\n", fetched_instr.insn.rs1());
 
-    // Step to run LOAD
-    proc->step(size_t(1));
+    // // Step to run LOAD
+    // proc->step(size_t(1));
 
-    // Print PC and registers
-    print_pc(proc);
-    print_registers(proc);
+    // // Print PC and registers
+    // print_pc(proc);
+    // print_registers(proc);
 
     return 0;
 }

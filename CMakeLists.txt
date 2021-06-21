@@ -4,7 +4,7 @@ project(SpikeLib VERSION 1.0
                  LANGUAGES C CXX)
 
 set(CMAKE_BUILD_TYPE "Debug")
-add_compile_options(-fPIC -fvisibility=hidden)
+add_compile_options(-fPIC -fvisibility=hidden -O0)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
@@ -15,7 +15,7 @@ add_library(spikelib SHARED ${CMAKE_CURRENT_SOURCE_DIR}/src/spikelib.cpp)
 include(ExternalProject)
 ExternalProject_Add(spike
    SOURCE_DIR        ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim
-   CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim/configure CPPFLAGS=-fPIC
+   CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim/configure "CPPFLAGS=-fPIC -O0" "CFLAGS=-O0" "CXXFLAGS=-O0"
    BUILD_COMMAND     make
    INSTALL_COMMAND   sh -c "ar ru spikelib.a ${CMAKE_CURRENT_BINARY_DIR}/spike-prefix/src/spike-build/*.o")
 
