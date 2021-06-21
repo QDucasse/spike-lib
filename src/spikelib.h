@@ -22,6 +22,7 @@ extern "C" {
     EXPORT const char* sp_strerror(int code);
     EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value);
     EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value);
+    EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout, size_t max_instruction_number);
 }
 
 // =====================================

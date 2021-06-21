@@ -7,8 +7,12 @@
 //                TESTS
 // =====================================
 
+uint64_t test_register;
 #define ASSERT_EQUALS(actual, expected) assert(actual == expected, __func__, __FILE__, __LINE__)
 #define ASSERT_EQUALS_BYTE_ARRAY(actual, expected, size) assert(memcmp(actual, expected, size) == 0, __func__, __FILE__, __LINE__)
+#define ASSERT_EQUALS_REGISTER(sim, register_id, expected) { \
+    read_register(sim, register_id, &test_register); \
+    ASSERT_EQUALS(test_register, expected); }
 
 void assert(bool result, const char* function_name, const char* file_name, int line_nb) {
     if (!result) {
@@ -75,11 +79,31 @@ void test_mem_read_write_10_bytes() {
     ASSERT_EQUALS_BYTE_ARRAY(mem_load_10_bytes, mem_write_10_bytes, 10);
 }
 
+void test_exec_add_instruction() {
+    // COMPLETE add x5, x6, x7
+    void* sim = setup_simulation();
+    uint32_t instr_add = 0x007302B3;
+    // Write the two values to add
+    uint64_t x5_value = 0x00000000;
+    uint64_t x6_value = 0x11110000;
+    uint64_t x7_value = 0x00001111;
+    write_register(sim, SPIKE_RISCV_REG_X5, &x5_value);
+    write_register(sim, SPIKE_RISCV_REG_X6, &x6_value);
+    write_register(sim, SPIKE_RISCV_REG_X7, &x7_value);
+    // Write instructions to memory
+    write_memory(sim, 0x1000, 4, &instr_add);
+    write_memory(sim, 0x1004, 4, &instr_add);
+    // Execute the instructions
+    spike_start(sim, 0x1000, 0x1004, 0, 0);
+    ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_X5, 0x11111111);
+}
+
 int main() {
+    // Memory tests
     test_mem_read_write_1_byte();
     test_mem_read_write_2_bytes();
     test_mem_read_write_4_bytes();
     test_mem_read_write_8_bytes();
     test_mem_read_write_10_bytes();
-
+    test_exec_add_instruction();
 }

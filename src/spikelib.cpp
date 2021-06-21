@@ -223,8 +223,22 @@ EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value)
                 real_sim->get_core(0)->get_mmu()->store_uint8(address + i*8, *((uint8_t*) value + i));
             }
     }   
+    real_sim->get_core(0)->get_mmu()->flush_icache();
     return SP_ERR_OK;
 }
+
+EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout, size_t max_instruction_number) {
+    sim_t* real_sim = (sim_t*) sim;
+    processor_t* core = real_sim->get_core(0);
+    state_t* state = core->get_state();
+    // Write the begin address to the PC
+    write_register(sim, SPIKE_RISCV_REG_PC, &begin_address);
+    while(state->pc != end_address) {
+        core->step(1);
+    }
+    return SP_ERR_OK;
+}
+
 
 // =====================================
 //       MAIN FOR EXPERIMENTATIONS
@@ -317,7 +331,7 @@ int main() {
     // COMPRESSED mov a0 a5
     // uint16_t instr_mov = 0x3e85;
     // COMPLETE add x5, x6, x7
-    // uint32_t instr_add = 0x007302B3;
+    uint32_t instr_add = 0x007302B3;
     // ___________________________________
 
     // Load instruction and decode some information
