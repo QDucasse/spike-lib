@@ -1,29 +1,11 @@
-// #include "riscv-tools/riscv-isa-sim/riscv/execute.cc"
-#include "riscv-tools/riscv-isa-sim/riscv/processor.h"
-#include "riscv-tools/riscv-isa-sim/riscv/devices.h"
-#include "riscv-tools/riscv-isa-sim/fesvr/memif.h"
-#include "riscv-tools/riscv-isa-sim/riscv/mmu.h"
-#include "riscv-tools/riscv-isa-sim/riscv/sim.h"
-#include "riscv-tools/riscv-isa-sim/riscv/trap.h"
+#include "processor.h"
+#include "devices.h"
+#include "memif.h"
+#include "mmu.h"
+#include "sim.h"
+#include "trap.h"
 #include "config.h"
-
-#define EXPORT  __attribute__ ((visibility ("default")))
-
-typedef struct {
-    uint64_t base;
-    uint64_t size;
-    void* content;
-} memory_region;
-
-extern "C" {
-    // void* doInitialize_sim(); // when using C wrapper
-    void* initialize_sim(memory_region* memories, int regions_number);
-    int read_register(void* sim, int regid, void* value);
-    int write_register(void* sim, int regid, void* value);
-    const char* sp_strerror(int code);
-    int write_memory(void* sim, uint64_t address, uint64_t size, void* value);
-    int read_memory(void* sim, uint64_t address, uint64_t size, void* value);
-}
+#include "spikelib.h"
 
 // =====================================
 //   SIMULATION INITIALIZATION HELPERS
@@ -67,68 +49,18 @@ void print_pc(processor_t* proc) {
     reg_t pc_reg = proc->get_state()->pc;
     printf("PC register value: 0x%lx\n", pc_reg);
 }
-    
 
-
-// =====================================
-//      RISCV REGISTERS ENUMERATION
-// =====================================
-
-typedef enum {
-    SPIKE_RISCV_REG_X0,
-    SPIKE_RISCV_REG_X1,
-    SPIKE_RISCV_REG_X2,
-    SPIKE_RISCV_REG_X3, 
-    SPIKE_RISCV_REG_X4, 
-    SPIKE_RISCV_REG_X5,
-    SPIKE_RISCV_REG_X6, 
-    SPIKE_RISCV_REG_X7, 
-    SPIKE_RISCV_REG_X8, 
-    SPIKE_RISCV_REG_X9,
-    SPIKE_RISCV_REG_X10, 
-    SPIKE_RISCV_REG_X11, 
-    SPIKE_RISCV_REG_X12, 
-    SPIKE_RISCV_REG_X13, 
-    SPIKE_RISCV_REG_X14, 
-    SPIKE_RISCV_REG_X15, 
-    SPIKE_RISCV_REG_X16, 
-    SPIKE_RISCV_REG_X17, 
-    SPIKE_RISCV_REG_X18, 
-    SPIKE_RISCV_REG_X19,
-    SPIKE_RISCV_REG_X20,
-    SPIKE_RISCV_REG_X21, 
-    SPIKE_RISCV_REG_X22,
-    SPIKE_RISCV_REG_X23, 
-    SPIKE_RISCV_REG_X24, 
-    SPIKE_RISCV_REG_X25, 
-    SPIKE_RISCV_REG_X26, 
-    SPIKE_RISCV_REG_X27, 
-    SPIKE_RISCV_REG_X28, 
-    SPIKE_RISCV_REG_X29, 
-    SPIKE_RISCV_REG_X30,
-    SPIKE_RISCV_REG_X31,
-    SPIKE_RISCV_REG_PC
-} spike_riscv_reg;
+void print_byte_array(uint8_t* byte_array, int size) {
+    for (int i = 0; i < size; i++)
+    {
+        printf("%02X", byte_array[i]);
+    }
+    printf("\n");
+}
 
 // =====================================
-//      SPIKE POSSIBLE ERROR CODES
+//        ERROR CODE FORMATTING
 // =====================================
-
-typedef enum {
-    SP_ERR_OK = 0,          // No error: everything was fine
-    SP_ERR_NO_MEM,          // Out-Of-Memory error: uc_open(), uc_emulate()
-    SP_ERR_READ_UNMAPPED,   // READ  on unmapped memory
-    SP_ERR_WRITE_UNMAPPED,  // WRITE on unmapped memory
-    SP_ERR_FETCH_UNMAPPED,  // FETCH on unmapped memory
-    SP_ERR_INSN_INVALID,    // Invalid Instruction
-    SP_ERR_MAP,             // Invalid memory mapping
-    SP_ERR_READ_PROT,       // READ  PROTECTION violation
-    SP_ERR_WRITE_PROT,      // WRITE PROTECTION violation
-    SP_ERR_FETCH_PROT,      // FETCH PROTECTION violation
-    SP_ERR_READ_UNALIGNED,  // Unaligned READ
-    SP_ERR_WRITE_UNALIGNED, // Unaligned WRITE
-    SP_ERR_FETCH_UNALIGNED, // Unaligned FETCH
-} sp_err;
 
 EXPORT const char* sp_strerror(int code) {
     switch(code) {
@@ -162,7 +94,6 @@ EXPORT const char* sp_strerror(int code) {
             return "Fetch from unaligned memory (SP_ERR_FETCH_UNALIGNED)";
     }
 }
-
 
 // =====================================
 //         PHARO API WRAPPERS
@@ -209,6 +140,9 @@ EXPORT void* initialize_sim(memory_region* memories, int regions_number){
     return static_cast<void*>(sim);
 }
 
+/* Read a value from a register into a buffer
+   Arguments: sim (void *) - Pointer to the simulation 
+*/
 EXPORT int read_register(void* sim, int regid, void* value) {
     // Casting the void* to sim_t for the simulation
     sim_t* real_sim = (sim_t*) sim;
@@ -261,7 +195,7 @@ EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value) 
         default:
             // If the size is not standard, load the bytes one by one
             for (int i=0; i<size; i++) {
-                *((uint8_t*) value + i*8) = real_sim->get_core(0)->get_mmu()->load_uint8(address + i*8);
+                *((uint8_t*) value + i) = real_sim->get_core(0)->get_mmu()->load_uint8(address + i*8);
             }
     }   
     return SP_ERR_OK;
@@ -286,12 +220,11 @@ EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value)
         default:
             // If the size is not standard, store the bytes one by one
             for (int i=0; i<size; i++) {
-                real_sim->get_core(0)->get_mmu()->store_uint8(address + i*8, *((uint8_t*) value + i*8));
+                real_sim->get_core(0)->get_mmu()->store_uint8(address + i*8, *((uint8_t*) value + i));
             }
     }   
     return SP_ERR_OK;
 }
-
 
 // =====================================
 //       MAIN FOR EXPERIMENTATIONS
@@ -415,37 +348,6 @@ int main() {
     // Print PC and registers
     print_pc(proc);
     print_registers(proc);
-
-
-
-    // Testing the memory read/write functions
-    // uint8_t
-    uint8_t mem_write_byte_8 = 0x11;
-    uint8_t mem_load_byte_8  = 0x00;
-    write_memory(sim, 0x1000, 1, (void*) &mem_write_byte_8);
-    read_memory(sim, 0x1000, 1, (void*) &mem_load_byte_8);
-    printf("Mem read/write 1 byte  test: 0x%x\n", mem_load_byte_8);
-
-    // uint16_t
-    uint16_t mem_write_byte_16 = 0x1111;
-    uint16_t mem_load_byte_16  = 0x0000;
-    write_memory(sim, 0x1030, 2, (void*) &mem_write_byte_16);
-    read_memory(sim, 0x1030, 2, (void*) &mem_load_byte_16);
-    printf("Mem read/write 2 bytes test: 0x%x\n", mem_load_byte_16);
-
-    // uint32_t
-    uint32_t mem_write_byte_32 = 0x11111111;
-    uint32_t mem_load_byte_32  = 0x00000000;
-    write_memory(sim, 0x1060, 4, (void*) &mem_write_byte_32);
-    read_memory(sim, 0x1060, 4, (void*) &mem_load_byte_32);
-    printf("Mem read/write 4 bytes test: 0x%x\n", mem_load_byte_32);
-
-    // uint64_t
-    uint64_t mem_write_byte_64 = 0x1111111111111111;
-    uint64_t mem_load_byte_64  = 0x0000000000000000;
-    write_memory(sim, 0x1120, 8, (void*) &mem_write_byte_64);
-    read_memory(sim, 0x1120, 8, (void*) &mem_load_byte_64);
-    printf("Mem read/write 8 bytes test: 0x%lx\n", mem_load_byte_64);
 
     return 0;
 }
