@@ -40,6 +40,13 @@ void* setup_simulation() {
     return initialize_sim(region, 1);
 }
 
+void* setup_simulation_with_isa(char* isa) {
+    void* content = calloc(1, 4096);
+    memory_region region[] = { {.base = 0x1000, .size = 4096, .content = content} };
+    return initialize_sim_with_isa(region, 1, isa);
+}
+
+
 // =====================================
 //           MEMORY WRITING
 // =====================================
@@ -115,6 +122,17 @@ void test_mem_write_10_bytes() {
     // Teardown
     release_sim(sim);
 } 
+
+void test_mem_write_misaligned() {
+    void* sim = setup_simulation();
+    uint8_t mem_write_buffer = 0x11;
+    uint8_t mem_load_buffer  = 0x00;
+    // Try to write to memory
+    int res = write_memory(sim, 0x1001, 1, (void*) &mem_write_buffer);
+    ASSERT_EQUALS(res, SP_ERR_WRITE_MISALIGNED);
+    // Teardown
+    release_sim(sim);
+}
 
 
 // =====================================
@@ -194,6 +212,20 @@ void test_mem_read_10_bytes() {
     release_sim(sim);
 }
 
+void test_mem_read_misaligned() {
+    void* sim = setup_simulation();
+    uint8_t mem_write_buffer = 0x11;
+    uint8_t mem_load_buffer  = 0x00;
+    // Write to memory
+    sim_t* real_sim = (sim_t*) sim;
+    real_sim->get_core(0)->get_mmu()->store_uint8(0x1000, mem_write_buffer);
+    // Read and compare
+    int res = read_memory(sim, 0x1001, 1, (void*) &mem_load_buffer);
+    ASSERT_EQUALS(res, SP_ERR_READ_MISALIGNED);
+    // Teardown
+    release_sim(sim);
+} 
+
 void test_mem_read_write_18_bytes() {
     // Byte Array with 10 bytes
     void* sim = setup_simulation();    
@@ -226,9 +258,9 @@ void test_exec_add_instruction() {
     write_register(sim, SPIKE_RISCV_REG_X7, &x7_value);
     // Write instructions to memory
     write_memory(sim, 0x1000, 4, &instr_add);
-    write_memory(sim, 0x1004, 4, &instr_add);
     // Execute the instructions
     int res = spike_start(sim, 0x1000, 0x1004, 0, 0);
+    // printf("%s\n",sp_strerror(res));
     // Verify return values
     ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_X5, 0x11111111);
     ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_PC, 0x1004);
@@ -236,6 +268,33 @@ void test_exec_add_instruction() {
     // Teardown
     release_sim(sim);
 }
+
+void test_exec_until_last_does_not_execute_destination() {
+    // COMPLETE add x5, x6, x7
+    void* sim = setup_simulation();
+    uint32_t instr_add     = 0x007302B3;
+    uint32_t instr_garbage = 0x00000293; 
+    // Write the two values to add
+    uint64_t x5_value = 0x00000000;
+    uint64_t x6_value = 0x11110000;
+    uint64_t x7_value = 0x00001111;
+    write_register(sim, SPIKE_RISCV_REG_X5, &x5_value);
+    write_register(sim, SPIKE_RISCV_REG_X6, &x6_value);
+    write_register(sim, SPIKE_RISCV_REG_X7, &x7_value);
+    // Write instructions to memory
+    write_memory(sim, 0x1000, 4, &instr_add);
+    write_memory(sim, 0x1004, 4, &instr_garbage);
+    // Execute the instructions
+    int res = spike_start(sim, 0x1000, 0x1004, 0, 0);
+    // printf("%s\n",sp_strerror(res));
+    // Verify return values
+    ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_X5, 0x11111111);
+    ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_PC, 0x1004);
+    ASSERT_EQUALS(res, SP_ERR_OK);
+    // Teardown
+    release_sim(sim);
+}
+
 
 /* TIMEOUT
 ========== */
@@ -279,9 +338,10 @@ void test_exec_jump_instruction_instruction_number() {
     write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Execute the instructions
     int res = spike_start(sim, 0x1000, 0x1020, 0, 6);
+    // printf("%s\n",sp_strerror(res));
     // Verify return values
     ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_X5, 3);
-    ASSERT_EQUALS(res, SP_ERR_OK);
+    ASSERT_EQUALS(res, SP_ERR_MAX_COUNT);
     // Teardown
     release_sim(sim);
 }
@@ -293,7 +353,7 @@ void test_exec_jump_instruction_instruction_number() {
 /* MISALIGNED READ
 ================== */
 
-void test_misaligned_address_read() { // mcause 4
+void test_instruction_misaligned_address_load() { // mcause 4
     void* sim = setup_simulation();
     uint8_t instructions[] {
         0xb7, 0xd3, 0x04, 0x00, // lui   x7 0x4d
@@ -309,6 +369,7 @@ void test_misaligned_address_read() { // mcause 4
     write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Verify return values
     int res = spike_start(sim, 0x1000, 0x1200, 0, 0);
+    // printf("%s\n",sp_strerror(res));
     ASSERT_EQUALS(res, SP_ERR_READ_MISALIGNED);
     // Teardown
     release_sim(sim);
@@ -317,7 +378,7 @@ void test_misaligned_address_read() { // mcause 4
 /* UNMAPPED READ
 ================ */
 
-void test_unmapped_address_read() {   // mcause 5
+void test_instruction_unmapped_address_load() {   // mcause 5
     void* sim = setup_simulation();
     uint8_t instructions[] {
         0xb7, 0xd3, 0x04, 0x00, // lui   x7  0x4d
@@ -333,6 +394,7 @@ void test_unmapped_address_read() {   // mcause 5
     write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Verify return values
     int res = spike_start(sim, 0x1000, 0x1200, 0, 0);
+    // printf("%s\n",sp_strerror(res));
     ASSERT_EQUALS(res, SP_ERR_READ_UNMAPPED);
     // Teardown
     release_sim(sim);
@@ -341,7 +403,7 @@ void test_unmapped_address_read() {   // mcause 5
 /* MISALIGNED WRITE
 =================== */
 
-void test_misaligned_address_write() { // mcause 6
+void test_instruction_misaligned_address_store() { // mcause 6
     void* sim = setup_simulation();
     uint8_t instructions[] {
         0xb7, 0xd3, 0x04, 0x00, // lui   x7 0x4d
@@ -357,7 +419,7 @@ void test_misaligned_address_write() { // mcause 6
     write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Verify return values
     int res = spike_start(sim, 0x1000, 0x1200, 0, 0);
-    printf("%s\n",sp_strerror(res));
+    // printf("%s\n",sp_strerror(res));
     ASSERT_EQUALS(res, SP_ERR_WRITE_MISALIGNED);
     // Teardown
     release_sim(sim);
@@ -366,7 +428,7 @@ void test_misaligned_address_write() { // mcause 6
 /* UNMAPPED WRITE
 ================= */
 
-void test_unmapped_address_write() {   // mcause 7
+void test_instruction_unmapped_address_store() {   // mcause 7
     void* sim = setup_simulation();
     uint8_t instructions[] {
         0xb7, 0xd3, 0x04, 0x00, // lui   x7  0x4d
@@ -383,7 +445,7 @@ void test_unmapped_address_write() {   // mcause 7
     write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Verify return values
     int res = spike_start(sim, 0x1000, 0x1200, 0, 0);
-    printf("%s\n",sp_strerror(res));
+    // printf("%s\n",sp_strerror(res));
     ASSERT_EQUALS(res, SP_ERR_WRITE_UNMAPPED);
     // Teardown
     release_sim(sim);
@@ -393,18 +455,17 @@ void test_unmapped_address_write() {   // mcause 7
 ========================= */
 
 void test_misaligned_instruction_address() {
-    void* sim = setup_simulation();
+    void* sim = setup_simulation_with_isa("IMAFD");
     uint8_t instructions[] {
-        0xb3, 0x02, 0x73, 0x00, // add  x5 x6 x7
-        0x05, 0x03,             // addi x6 x6 1  
-        0xed, 0xbf              // j    0x1000
+        0x93, 0x03, 0x70, 0x09, // addi	x7, x0, 0x97
+        0x67, 0x80, 0x03, 0x00  // jr   x7
     };
     // Write instructions to memory
-    write_memory(sim, 0x1002, sizeof(instructions), instructions);
+    write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Verify return values
     int res = spike_start(sim, 0x1000, 0x1200, 0, 0);
-    printf("%s\n",sp_strerror(res));
-    ASSERT_EQUALS(res, SP_ERR_INSN_INVALID);
+    // printf("%s\n",sp_strerror(res));
+    ASSERT_EQUALS(res, SP_ERR_FETCH_MISALIGNED);
     // Teardown
     release_sim(sim);
 }
@@ -422,7 +483,7 @@ void test_invalid_instruction_fetch() {
     write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Verify return values
     int res = spike_start(sim, 0x1000, 0x1200, 0, 0);
-    printf("%s\n",sp_strerror(res));
+    // printf("%s\n",sp_strerror(res));
     ASSERT_EQUALS(res, SP_ERR_INSN_INVALID);
     // Teardown
     release_sim(sim);
@@ -441,6 +502,7 @@ int main() {
     test_mem_write_4_bytes();
     test_mem_write_8_bytes();
     test_mem_write_10_bytes();
+    test_mem_write_misaligned();
 
     // Memory read tests
     test_mem_read_1_byte();
@@ -448,17 +510,19 @@ int main() {
     test_mem_read_4_bytes();
     test_mem_read_8_bytes();
     test_mem_read_10_bytes();
-    
+    test_mem_read_misaligned();
+
     // Execution tests
     test_exec_add_instruction();
     test_exec_jump_instruction_timeout();
     test_exec_jump_instruction_instruction_number();
+    test_exec_until_last_does_not_execute_destination();
     
     // Memory errors tests
-    test_misaligned_address_read();
-    test_unmapped_address_read();
-    test_misaligned_address_write();
-    test_unmapped_address_write();
+    test_instruction_misaligned_address_load();
+    test_instruction_unmapped_address_load();
+    test_instruction_misaligned_address_store();
+    test_instruction_unmapped_address_store();
 
     // Instruction tests
     test_invalid_instruction_fetch();

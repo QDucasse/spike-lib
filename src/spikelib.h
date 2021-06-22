@@ -16,6 +16,7 @@ typedef struct {
 
 extern "C" {
     // void* doInitialize_sim(); // when using C wrapper
+    EXPORT void* initialize_sim_with_isa(memory_region* memories, int regions_number, const char* isa);
     EXPORT void* initialize_sim(memory_region* memories, int regions_number);
     EXPORT int read_register(void* sim, int regid, void* value);
     EXPORT int write_register(void* sim, int regid, void* value);
@@ -114,6 +115,7 @@ typedef enum {
 typedef enum {
     SP_ERR_OK = 0,           // No error: everything was fine
     SP_ERR_TIMEOUT,          // Execution timeout
+    SP_ERR_MAX_COUNT,        // Max number of instructions reached
     SP_ERR_NO_MEM,           // Out-Of-Memory error
     SP_ERR_READ_UNMAPPED,    // READ  on unmapped memory
     SP_ERR_WRITE_UNMAPPED,   // WRITE on unmapped memory

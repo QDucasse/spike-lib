@@ -67,7 +67,6 @@ void print_byte_array(uint8_t* byte_array, int size) {
 static inline int64_t get_clock_realtime(void)
 {
     struct timeval tv;
-
     gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000000000LL + (tv.tv_usec * 1000);
 }
@@ -81,9 +80,11 @@ EXPORT const char* sp_strerror(int code) {
         // _________ OK ________
         case SP_ERR_OK:
             return "OK (SP_ERR_OK)";
-        // ______ Timeout ______
+        // _____ Execution _____
         case SP_ERR_TIMEOUT:
             return "Execution timeout (SP_ERR_TIMEOUT)";
+        case SP_ERR_MAX_COUNT:
+            return "Max number of instructions reached (SP_ERR_MAX_COUNT)";
         // ________ OOM ________
         case SP_ERR_NO_MEM:
             return "No memory available or memory not present (SP_ERR_NO_MEM)";
@@ -125,8 +126,8 @@ EXPORT const char* sp_strerror(int code) {
 //         PHARO API WRAPPERS
 // =====================================
 
-EXPORT void* initialize_sim(memory_region* memories, int regions_number){
-    const char* isa            = DEFAULT_ISA;    // RISC-V ISA string          (rv32 or rv64 with extensions, g = imafd)  DEFAULT = IMAFDC
+
+EXPORT void* initialize_sim_with_isa(memory_region* memories, int regions_number, const char* isa){
     size_t nprocs              = size_t(1);      // Number of processors                         
     bool halted                = false;          // Start halted, allowing a debugger to connect    
     reg_t start_pc             = reg_t(0x1000);  // Start PC
@@ -164,6 +165,11 @@ EXPORT void* initialize_sim(memory_region* memories, int regions_number){
     }
 
     return static_cast<void*>(sim);
+}
+
+EXPORT void* initialize_sim(memory_region* memories, int regions_number) {
+    // DEFAULT_ISA: (rv32 or rv64 with extensions, g = imafd)  DEFAULT = IMAFDC
+    return initialize_sim_with_isa(memories, regions_number, DEFAULT_ISA);
 }
 
 EXPORT void release_sim(void* sim) {
@@ -215,7 +221,7 @@ EXPORT int read_register(void* sim, int regid, void* value) {
         case SPIKE_RISCV_REG_X29:
         case SPIKE_RISCV_REG_X30:
         case SPIKE_RISCV_REG_X31: {
-            *((uint32_t*) value) = real_sim->get_core(0)->get_state()->XPR[regid];
+            *((uint32_t*) value) = real_sim->get_core(0)->get_state()->XPR[regid-SPIKE_RISCV_REG_X0];
             break;
         }
         // Floating Point Registers
@@ -251,7 +257,7 @@ EXPORT int read_register(void* sim, int regid, void* value) {
         case SPIKE_RISCV_REG_F29:
         case SPIKE_RISCV_REG_F30:
         case SPIKE_RISCV_REG_F31: {
-            *((float128_t*) value) = real_sim->get_core(0)->get_state()->FPR[regid];
+            *((float128_t*) value) = real_sim->get_core(0)->get_state()->FPR[regid-SPIKE_RISCV_REG_F0];
             break;
         }
         // Unknown Regid
@@ -301,7 +307,7 @@ EXPORT int write_register(void* sim, int regid, void* value) {
         case SPIKE_RISCV_REG_X29:
         case SPIKE_RISCV_REG_X30:
         case SPIKE_RISCV_REG_X31: {
-            real_sim->get_core(0)->get_state()->XPR.write(regid, *((uint32_t*)value));
+            real_sim->get_core(0)->get_state()->XPR.write(regid-SPIKE_RISCV_REG_X0, *((uint32_t*)value));
             break;
         }   
         // Floating Point Registers
@@ -337,7 +343,7 @@ EXPORT int write_register(void* sim, int regid, void* value) {
         case SPIKE_RISCV_REG_F29:
         case SPIKE_RISCV_REG_F30:
         case SPIKE_RISCV_REG_F31: {
-            real_sim->get_core(0)->get_state()->FPR.write(regid, *((float128_t *)value));
+            real_sim->get_core(0)->get_state()->FPR.write(regid-SPIKE_RISCV_REG_F0, *((float128_t *)value));
             break;
         }   
         // Unknown regid
@@ -376,7 +382,7 @@ EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value) 
 EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value) {
     sim_t* real_sim = (sim_t*) sim;
     // Check alignment
-    if ((int) address % 8 != 0) return SP_ERR_READ_MISALIGNED;
+    if ((int) address % 8 != 0) return SP_ERR_WRITE_MISALIGNED;
     // Switch on the size to call the proper function
     switch(size) {
         case 1:
@@ -407,8 +413,14 @@ EXPORT int get_memory_exception_cause(void* sim) {
     state_t* state = core->get_state();
     sp_err error = SP_ERR_OK;
     // Switch on the mcause register that holds any issue the memory access might have
-    switch(state->mcause) {
-        case(0): error = SP_ERR_OK;               break; // mcause = 0 | No exceptions
+    switch(state->mcause & 0b111) {
+        // P. 102-105
+        case(0): {
+            if (state->pc == state->mtvec) {
+                error = SP_ERR_FETCH_MISALIGNED;
+            }
+            break; 
+        }
         case(1): error = SP_ERR_FETCH_UNMAPPED;   break; // mcause = 1 | Instruction access fault
         case(2): error = SP_ERR_INSN_INVALID;     break; // mcause = 2 | Illegal instruction
         case(4): error = SP_ERR_READ_MISALIGNED;  break; // mcause = 4 | Load address misaligned
@@ -421,16 +433,15 @@ EXPORT int get_memory_exception_cause(void* sim) {
 
 }
 
-EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout, size_t max_instruction_number) {
+EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout_us, size_t max_instruction_number) {
     sim_t* real_sim = (sim_t*) sim;
     processor_t* core = real_sim->get_core(0);
     state_t* state = core->get_state();
-    // TODO: Control the end_address to be in given bounds
 
     // Write the begin address to the PC
     write_register(sim, SPIKE_RISCV_REG_PC, &begin_address);
     // Initialize the timer
-    int64_t current_time = get_clock_realtime();
+    int64_t current_time_us = get_clock_realtime();
     // Check for the end address to be ok, if not STOP execution directly
     bool has_timed_out     = false;
     bool has_reached_count = false;
@@ -440,14 +451,14 @@ EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, 
     while(!has_reached_end && !has_timed_out && !has_reached_count && !has_mem_exception) {
         core->step(1);
         // Check time out, instruction count and final pc
-        has_timed_out     = !(((uint64_t)(get_clock_realtime() - current_time) < timeout) || timeout == 0);
+        has_timed_out     = !(((uint64_t)(get_clock_realtime() - current_time_us) < timeout_us) || timeout_us == 0);
         has_reached_count = (++instruction_count == max_instruction_number) && (max_instruction_number != 0);
         has_reached_end   = (state->pc == end_address);
         has_mem_exception = (get_memory_exception_cause(sim) != SP_ERR_OK);
     }
     
     if (has_reached_end)   return SP_ERR_OK;
-    if (has_reached_count) return SP_ERR_OK;
+    if (has_reached_count) return SP_ERR_MAX_COUNT;
     if (has_timed_out)     return SP_ERR_TIMEOUT;
     if (has_mem_exception) return get_memory_exception_cause(sim);
 
@@ -540,8 +551,6 @@ int main() {
     // COMPRESSED mov a0 a5
     // uint16_t instr_mov = 0x3e85;
     // COMPLETE add x5, x6, x7
-
-
     // uint32_t instr_add = 0x007302B3;
     // // ___________________________________
 
