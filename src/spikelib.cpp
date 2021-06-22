@@ -78,34 +78,46 @@ static inline int64_t get_clock_realtime(void)
 
 EXPORT const char* sp_strerror(int code) {
     switch(code) {
-        default:
-            return "Unknown error code";
+        // _________ OK ________
         case SP_ERR_OK:
             return "OK (SP_ERR_OK)";
+        // ______ Timeout ______
+        case SP_ERR_TIMEOUT:
+            return "Execution timeout (SP_ERR_TIMEOUT)";
+        // ________ OOM ________
         case SP_ERR_NO_MEM:
             return "No memory available or memory not present (SP_ERR_NO_MEM)";
+        // ______ Unmapped _____
         case SP_ERR_READ_UNMAPPED:
             return "Invalid memory read (SP_ERR_READ_UNMAPPED)";
         case SP_ERR_WRITE_UNMAPPED:
             return "Invalid memory write (SP_ERR_WRITE_UNMAPPED)";
         case SP_ERR_FETCH_UNMAPPED:
             return "Invalid memory fetch (SP_ERR_FETCH_UNMAPPED)";
+        // ______ Invalid ______
+        case SP_ERR_REGID_INVALID:
+            return "Invalid register id (SP_ERR_REGID_INVALID)";
         case SP_ERR_INSN_INVALID:
             return "Invalid instruction (SP_ERR_INSN_INVALID)";
-        case SP_ERR_MAP:
+        case SP_ERR_MAP_INVALID:
             return "Invalid memory mapping (SP_ERR_MAP)";
+        // _____ Protection _____
         case SP_ERR_READ_PROT:
             return "Read from non-readable memory (SP_ERR_READ_PROT)";
         case SP_ERR_WRITE_PROT:
             return "Write to write-protected memory (SP_ERR_WRITE_PROT)";
         case SP_ERR_FETCH_PROT:
             return "Fetch from non-executable memory (SP_ERR_FETCH_PROT)";
-        case SP_ERR_READ_UNALIGNED:
-            return "Read from unaligned memory (SP_ERR_READ_UNALIGNED)";
-        case SP_ERR_WRITE_UNALIGNED:
-            return "Write to unaligned memory (SP_ERR_WRITE_UNALIGNED)";
-        case SP_ERR_FETCH_UNALIGNED:
-            return "Fetch from unaligned memory (SP_ERR_FETCH_UNALIGNED)";
+        // _____ Alignment ______
+        case SP_ERR_READ_MISALIGNED:
+            return "Read from unaligned memory (SP_ERR_READ_MISALIGNED)";
+        case SP_ERR_WRITE_MISALIGNED:
+            return "Write to unaligned memory (SP_ERR_WRITE_MISALIGNED)";
+        case SP_ERR_FETCH_MISALIGNED:
+            return "Fetch from unaligned memory (SP_ERR_FETCH_MISALIGNED)";
+        // ______ Unknown _______
+        default:
+            return "Unknown error code";
     }
 }
 
@@ -163,40 +175,181 @@ EXPORT void release_sim(void* sim) {
    Arguments: sim (void *) - Pointer to the simulation 
 */
 EXPORT int read_register(void* sim, int regid, void* value) {
-    // Casting the void* to sim_t for the simulation
     sim_t* real_sim = (sim_t*) sim;
-    // Getting the value of the register regid
-    // Casting the address of the resulting value back to void*
     switch(regid) {
+        // PC
         case SPIKE_RISCV_REG_PC: {
             *((uint32_t*) value) = real_sim->get_core(0)->get_state()->pc;
             break;
         }
-        default: {
+        // General Registers
+        case SPIKE_RISCV_REG_X0:
+        case SPIKE_RISCV_REG_X1:
+        case SPIKE_RISCV_REG_X2:
+        case SPIKE_RISCV_REG_X3:
+        case SPIKE_RISCV_REG_X4:
+        case SPIKE_RISCV_REG_X5:
+        case SPIKE_RISCV_REG_X6:
+        case SPIKE_RISCV_REG_X7:
+        case SPIKE_RISCV_REG_X8:
+        case SPIKE_RISCV_REG_X9:
+        case SPIKE_RISCV_REG_X10:
+        case SPIKE_RISCV_REG_X11:
+        case SPIKE_RISCV_REG_X12:
+        case SPIKE_RISCV_REG_X13:
+        case SPIKE_RISCV_REG_X14:
+        case SPIKE_RISCV_REG_X15:
+        case SPIKE_RISCV_REG_X16:
+        case SPIKE_RISCV_REG_X17:
+        case SPIKE_RISCV_REG_X18:
+        case SPIKE_RISCV_REG_X19:
+        case SPIKE_RISCV_REG_X20:
+        case SPIKE_RISCV_REG_X21:
+        case SPIKE_RISCV_REG_X22:
+        case SPIKE_RISCV_REG_X23:
+        case SPIKE_RISCV_REG_X24:
+        case SPIKE_RISCV_REG_X25:
+        case SPIKE_RISCV_REG_X26:
+        case SPIKE_RISCV_REG_X27:
+        case SPIKE_RISCV_REG_X28:
+        case SPIKE_RISCV_REG_X29:
+        case SPIKE_RISCV_REG_X30:
+        case SPIKE_RISCV_REG_X31: {
             *((uint32_t*) value) = real_sim->get_core(0)->get_state()->XPR[regid];
+            break;
         }
+        // Floating Point Registers
+        case SPIKE_RISCV_REG_F0:
+        case SPIKE_RISCV_REG_F1:
+        case SPIKE_RISCV_REG_F2:
+        case SPIKE_RISCV_REG_F3:
+        case SPIKE_RISCV_REG_F4:
+        case SPIKE_RISCV_REG_F5:
+        case SPIKE_RISCV_REG_F6:
+        case SPIKE_RISCV_REG_F7:
+        case SPIKE_RISCV_REG_F8:
+        case SPIKE_RISCV_REG_F9:
+        case SPIKE_RISCV_REG_F10:
+        case SPIKE_RISCV_REG_F11:
+        case SPIKE_RISCV_REG_F12:
+        case SPIKE_RISCV_REG_F13:
+        case SPIKE_RISCV_REG_F14:
+        case SPIKE_RISCV_REG_F15:
+        case SPIKE_RISCV_REG_F16:
+        case SPIKE_RISCV_REG_F17:
+        case SPIKE_RISCV_REG_F18:
+        case SPIKE_RISCV_REG_F19:
+        case SPIKE_RISCV_REG_F20:
+        case SPIKE_RISCV_REG_F21:
+        case SPIKE_RISCV_REG_F22:
+        case SPIKE_RISCV_REG_F23:
+        case SPIKE_RISCV_REG_F24:
+        case SPIKE_RISCV_REG_F25:
+        case SPIKE_RISCV_REG_F26:
+        case SPIKE_RISCV_REG_F27:
+        case SPIKE_RISCV_REG_F28:
+        case SPIKE_RISCV_REG_F29:
+        case SPIKE_RISCV_REG_F30:
+        case SPIKE_RISCV_REG_F31: {
+            *((float128_t*) value) = real_sim->get_core(0)->get_state()->FPR[regid];
+            break;
+        }
+        // Unknown Regid
+        default: return SP_ERR_REGID_INVALID;
     }
     return SP_ERR_OK;
 }
 
-EXPORT int write_register(void* sim, int regid, void* value) {  // Returns an sp_err but simplified to int for export
-    // Casting the void* to sim_t for the simulation
+EXPORT int write_register(void* sim, int regid, void* value) {  
     sim_t* real_sim = (sim_t*) sim;
-    // Casting the content of value to uint32_t
-    // Writing the result to register regid
     switch(regid) {
+        // PC
         case SPIKE_RISCV_REG_PC: {
             real_sim->get_core(0)->get_state()->pc = (*((uint32_t*)value));
+            break;
         }
-        default: {
+        // General Registers
+        case SPIKE_RISCV_REG_X0:
+        case SPIKE_RISCV_REG_X1:
+        case SPIKE_RISCV_REG_X2:
+        case SPIKE_RISCV_REG_X3:
+        case SPIKE_RISCV_REG_X4:
+        case SPIKE_RISCV_REG_X5:
+        case SPIKE_RISCV_REG_X6:
+        case SPIKE_RISCV_REG_X7:
+        case SPIKE_RISCV_REG_X8:
+        case SPIKE_RISCV_REG_X9:
+        case SPIKE_RISCV_REG_X10:
+        case SPIKE_RISCV_REG_X11:
+        case SPIKE_RISCV_REG_X12:
+        case SPIKE_RISCV_REG_X13:
+        case SPIKE_RISCV_REG_X14:
+        case SPIKE_RISCV_REG_X15:
+        case SPIKE_RISCV_REG_X16:
+        case SPIKE_RISCV_REG_X17:
+        case SPIKE_RISCV_REG_X18:
+        case SPIKE_RISCV_REG_X19:
+        case SPIKE_RISCV_REG_X20:
+        case SPIKE_RISCV_REG_X21:
+        case SPIKE_RISCV_REG_X22:
+        case SPIKE_RISCV_REG_X23:
+        case SPIKE_RISCV_REG_X24:
+        case SPIKE_RISCV_REG_X25:
+        case SPIKE_RISCV_REG_X26:
+        case SPIKE_RISCV_REG_X27:
+        case SPIKE_RISCV_REG_X28:
+        case SPIKE_RISCV_REG_X29:
+        case SPIKE_RISCV_REG_X30:
+        case SPIKE_RISCV_REG_X31: {
             real_sim->get_core(0)->get_state()->XPR.write(regid, *((uint32_t*)value));
+            break;
         }   
+        // Floating Point Registers
+        case SPIKE_RISCV_REG_F0:
+        case SPIKE_RISCV_REG_F1:
+        case SPIKE_RISCV_REG_F2:
+        case SPIKE_RISCV_REG_F3:
+        case SPIKE_RISCV_REG_F4:
+        case SPIKE_RISCV_REG_F5:
+        case SPIKE_RISCV_REG_F6:
+        case SPIKE_RISCV_REG_F7:
+        case SPIKE_RISCV_REG_F8:
+        case SPIKE_RISCV_REG_F9:
+        case SPIKE_RISCV_REG_F10:
+        case SPIKE_RISCV_REG_F11:
+        case SPIKE_RISCV_REG_F12:
+        case SPIKE_RISCV_REG_F13:
+        case SPIKE_RISCV_REG_F14:
+        case SPIKE_RISCV_REG_F15:
+        case SPIKE_RISCV_REG_F16:
+        case SPIKE_RISCV_REG_F17:
+        case SPIKE_RISCV_REG_F18:
+        case SPIKE_RISCV_REG_F19:
+        case SPIKE_RISCV_REG_F20:
+        case SPIKE_RISCV_REG_F21:
+        case SPIKE_RISCV_REG_F22:
+        case SPIKE_RISCV_REG_F23:
+        case SPIKE_RISCV_REG_F24:
+        case SPIKE_RISCV_REG_F25:
+        case SPIKE_RISCV_REG_F26:
+        case SPIKE_RISCV_REG_F27:
+        case SPIKE_RISCV_REG_F28:
+        case SPIKE_RISCV_REG_F29:
+        case SPIKE_RISCV_REG_F30:
+        case SPIKE_RISCV_REG_F31: {
+            real_sim->get_core(0)->get_state()->FPR.write(regid, *((float128_t *)value));
+            break;
+        }   
+        // Unknown regid
+        default: return SP_ERR_REGID_INVALID;
     }
     return SP_ERR_OK;
 }
 
 EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value) {
     sim_t* real_sim = (sim_t*) sim;
+    // Check alignment
+    if ((int) address % 8 != 0) return SP_ERR_READ_MISALIGNED;
     // Switch on the size to call the proper function
     switch(size) {
         case 1:
@@ -222,6 +375,8 @@ EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value) 
 
 EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value) {
     sim_t* real_sim = (sim_t*) sim;
+    // Check alignment
+    if ((int) address % 8 != 0) return SP_ERR_READ_MISALIGNED;
     // Switch on the size to call the proper function
     switch(size) {
         case 1:
@@ -246,35 +401,56 @@ EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value)
     return SP_ERR_OK;
 }
 
+EXPORT int get_memory_exception_cause(void* sim) {
+    sim_t* real_sim = (sim_t*) sim;
+    processor_t* core = real_sim->get_core(0);
+    state_t* state = core->get_state();
+    sp_err error = SP_ERR_OK;
+    // Switch on the mcause register that holds any issue the memory access might have
+    switch(state->mcause) {
+        case(0): error = SP_ERR_OK;               break; // mcause = 0 | No exceptions
+        case(1): error = SP_ERR_FETCH_UNMAPPED;   break; // mcause = 1 | Instruction access fault
+        case(2): error = SP_ERR_INSN_INVALID;     break; // mcause = 2 | Illegal instruction
+        case(4): error = SP_ERR_READ_MISALIGNED;  break; // mcause = 4 | Load address misaligned
+        case(5): error = SP_ERR_READ_UNMAPPED;    break; // mcause = 5 | Load access fault
+        case(6): error = SP_ERR_WRITE_MISALIGNED; break; // mcause = 6 | Store address misaligned
+        case(7): error = SP_ERR_WRITE_UNMAPPED;   break; // mcause = 7 | Store access fault
+        default: break;
+    }
+    return error;
+
+}
+
 EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout, size_t max_instruction_number) {
     sim_t* real_sim = (sim_t*) sim;
     processor_t* core = real_sim->get_core(0);
     state_t* state = core->get_state();
+    // TODO: Control the end_address to be in given bounds
+
     // Write the begin address to the PC
     write_register(sim, SPIKE_RISCV_REG_PC, &begin_address);
     // Initialize the timer
     int64_t current_time = get_clock_realtime();
     // Check for the end address to be ok, if not STOP execution directly
-    bool has_timed_out = false;
+    bool has_timed_out     = false;
     bool has_reached_count = false;
+    bool has_reached_end   = false;
+    bool has_mem_exception = false;
     int instruction_count = 0;
-    while(state->pc != end_address && !has_timed_out && !has_reached_count) {
+    while(!has_reached_end && !has_timed_out && !has_reached_count && !has_mem_exception) {
         core->step(1);
-        has_timed_out = !(((uint64_t)(get_clock_realtime() - current_time) < timeout) || timeout == 0);
+        // Check time out, instruction count and final pc
+        has_timed_out     = !(((uint64_t)(get_clock_realtime() - current_time) < timeout) || timeout == 0);
         has_reached_count = (++instruction_count == max_instruction_number) && (max_instruction_number != 0);
+        has_reached_end   = (state->pc == end_address);
+        has_mem_exception = (get_memory_exception_cause(sim) != SP_ERR_OK);
     }
     
-    if(state->pc == end_address) {
-        return SP_ERR_OK;
-    }
+    if (has_reached_end)   return SP_ERR_OK;
+    if (has_reached_count) return SP_ERR_OK;
+    if (has_timed_out)     return SP_ERR_TIMEOUT;
+    if (has_mem_exception) return get_memory_exception_cause(sim);
 
-    if (has_reached_count) {
-        return SP_ERR_OK;
-    }
-    
-    if (has_timed_out) {
-        return SP_ERR_TIMEOUT;
-    }
     return SP_ERR_UNKNOWN;
 }
 

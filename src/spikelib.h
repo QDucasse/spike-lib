@@ -31,6 +31,8 @@ extern "C" {
 // =====================================
 
 typedef enum {
+    // ___ GENERAL REGISTERS ____
+
     SPIKE_RISCV_REG_X0,
     SPIKE_RISCV_REG_X1,
     SPIKE_RISCV_REG_X2,
@@ -63,7 +65,46 @@ typedef enum {
     SPIKE_RISCV_REG_X29, 
     SPIKE_RISCV_REG_X30,
     SPIKE_RISCV_REG_X31,
-    SPIKE_RISCV_REG_PC
+
+    // _____________ PC ________________
+    
+    SPIKE_RISCV_REG_PC,
+
+    // ___ FLOATING POINT REGISTERS ____
+    
+    SPIKE_RISCV_REG_F0,
+    SPIKE_RISCV_REG_F1,
+    SPIKE_RISCV_REG_F2,
+    SPIKE_RISCV_REG_F3, 
+    SPIKE_RISCV_REG_F4, 
+    SPIKE_RISCV_REG_F5,
+    SPIKE_RISCV_REG_F6, 
+    SPIKE_RISCV_REG_F7, 
+    SPIKE_RISCV_REG_F8, 
+    SPIKE_RISCV_REG_F9,
+    SPIKE_RISCV_REG_F10, 
+    SPIKE_RISCV_REG_F11, 
+    SPIKE_RISCV_REG_F12, 
+    SPIKE_RISCV_REG_F13, 
+    SPIKE_RISCV_REG_F14, 
+    SPIKE_RISCV_REG_F15, 
+    SPIKE_RISCV_REG_F16, 
+    SPIKE_RISCV_REG_F17, 
+    SPIKE_RISCV_REG_F18, 
+    SPIKE_RISCV_REG_F19,
+    SPIKE_RISCV_REG_F20,
+    SPIKE_RISCV_REG_F21, 
+    SPIKE_RISCV_REG_F22,
+    SPIKE_RISCV_REG_F23, 
+    SPIKE_RISCV_REG_F24, 
+    SPIKE_RISCV_REG_F25, 
+    SPIKE_RISCV_REG_F26, 
+    SPIKE_RISCV_REG_F27, 
+    SPIKE_RISCV_REG_F28, 
+    SPIKE_RISCV_REG_F29, 
+    SPIKE_RISCV_REG_F30,
+    SPIKE_RISCV_REG_F31
+
 } spike_riscv_reg;
 
 // =====================================
@@ -71,20 +112,21 @@ typedef enum {
 // =====================================
 
 typedef enum {
-    SP_ERR_OK = 0,          // No error: everything was fine
-    SP_ERR_TIMEOUT,         // Execution timeout
-    SP_ERR_NO_MEM,          // Out-Of-Memory error: uc_open(), uc_emulate()
-    SP_ERR_READ_UNMAPPED,   // READ  on unmapped memory
-    SP_ERR_WRITE_UNMAPPED,  // WRITE on unmapped memory
-    SP_ERR_FETCH_UNMAPPED,  // FETCH on unmapped memory
-    SP_ERR_INSN_INVALID,    // Invalid Instruction
-    SP_ERR_MAP,             // Invalid memory mapping
-    SP_ERR_READ_PROT,       // READ  PROTECTION violation
-    SP_ERR_WRITE_PROT,      // WRITE PROTECTION violation
-    SP_ERR_FETCH_PROT,      // FETCH PROTECTION violation
-    SP_ERR_READ_UNALIGNED,  // Unaligned READ
-    SP_ERR_WRITE_UNALIGNED, // Unaligned WRITE
-    SP_ERR_FETCH_UNALIGNED, // Unaligned FETCH
-    SP_ERR_UNKNOWN          // Other error
+    SP_ERR_OK = 0,           // No error: everything was fine
+    SP_ERR_TIMEOUT,          // Execution timeout
+    SP_ERR_NO_MEM,           // Out-Of-Memory error
+    SP_ERR_READ_UNMAPPED,    // READ  on unmapped memory
+    SP_ERR_WRITE_UNMAPPED,   // WRITE on unmapped memory
+    SP_ERR_FETCH_UNMAPPED,   // FETCH on unmapped memory
+    SP_ERR_READ_PROT,        // READ  PROTECTION violation
+    SP_ERR_WRITE_PROT,       // WRITE PROTECTION violation
+    SP_ERR_FETCH_PROT,       // FETCH PROTECTION violation
+    SP_ERR_READ_MISALIGNED,  // Misaligned READ
+    SP_ERR_WRITE_MISALIGNED, // Misaligned WRITE
+    SP_ERR_FETCH_MISALIGNED, // Misaligned FETCH
+    SP_ERR_REGID_INVALID,    // Invalid Register id
+    SP_ERR_INSN_INVALID,     // Invalid Instruction
+    SP_ERR_MAP_INVALID,      // Invalid memory mapping
+    SP_ERR_UNKNOWN           // Other error
 } sp_err;
 

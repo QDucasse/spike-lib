@@ -5,3 +5,4 @@ cmake_install.cmake
 spike-prefix/
 libspikelib.so
 spikelib
+src/asm_examples/*.o

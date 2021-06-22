@@ -50,5 +50,12 @@ target_link_libraries(spikelib-ex PRIVATE spikelib)
 
 add_executable(spikelib-tests ${CMAKE_CURRENT_SOURCE_DIR}/src/tests.cpp)
 target_include_directories(spikelib-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(spikelib-tests
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim/riscv
+    ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim/softfloat
+    ${CMAKE_CURRENT_SOURCE_DIR}/riscv-tools/riscv-isa-sim/fesvr
+    ${CMAKE_CURRENT_BINARY_DIR}/spike-prefix/src/spike-build
+)
 target_link_libraries(spikelib-tests PRIVATE spikelib)
 
