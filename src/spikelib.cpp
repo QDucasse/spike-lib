@@ -185,7 +185,7 @@ EXPORT int read_register(void* sim, int regid, void* value) {
     switch(regid) {
         // PC
         case SPIKE_RISCV_REG_PC: {
-            *((uint32_t*) value) = real_sim->get_core(0)->get_state()->pc;
+            *((uint64_t*) value) = real_sim->get_core(0)->get_state()->pc;
             break;
         }
         // General Registers
@@ -221,7 +221,7 @@ EXPORT int read_register(void* sim, int regid, void* value) {
         case SPIKE_RISCV_REG_X29:
         case SPIKE_RISCV_REG_X30:
         case SPIKE_RISCV_REG_X31: {
-            *((uint32_t*) value) = real_sim->get_core(0)->get_state()->XPR[regid-SPIKE_RISCV_REG_X0];
+            *((uint64_t*) value) = real_sim->get_core(0)->get_state()->XPR[regid-SPIKE_RISCV_REG_X0];
             break;
         }
         // Floating Point Registers
@@ -271,7 +271,7 @@ EXPORT int write_register(void* sim, int regid, void* value) {
     switch(regid) {
         // PC
         case SPIKE_RISCV_REG_PC: {
-            real_sim->get_core(0)->get_state()->pc = (*((uint32_t*)value));
+            real_sim->get_core(0)->get_state()->pc = (*((uint64_t*)value));
             break;
         }
         // General Registers
@@ -307,7 +307,7 @@ EXPORT int write_register(void* sim, int regid, void* value) {
         case SPIKE_RISCV_REG_X29:
         case SPIKE_RISCV_REG_X30:
         case SPIKE_RISCV_REG_X31: {
-            real_sim->get_core(0)->get_state()->XPR.write(regid-SPIKE_RISCV_REG_X0, *((uint32_t*)value));
+            real_sim->get_core(0)->get_state()->XPR.write(regid-SPIKE_RISCV_REG_X0, *((uint64_t*)value));
             break;
         }   
         // Floating Point Registers

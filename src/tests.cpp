@@ -304,7 +304,8 @@ void test_exec_jump_instruction_timeout() {
     uint8_t instructions[] {
         0xb3, 0x02, 0x73, 0x00, // add x5 x6 x7
         0xb3, 0x02, 0x73, 0x00, // add x5 x6 x7
-        0xe5, 0xbf              // j 0x1000
+        // 0xe5, 0xbf              // j 0x1000
+        0x6f, 0x00, 0x00, 0x00  // j 0x1000
     };
     uint64_t x5_value = 0x00000000;
     write_register(sim, SPIKE_RISCV_REG_X5, &x5_value);
@@ -327,6 +328,8 @@ void test_exec_jump_instruction_instruction_number() {
         0xb3, 0x02, 0x73, 0x00, // add  x5 x6 x7
         0x05, 0x03,             // addi x6 x6 1  
         0xed, 0xbf              // j    0x1000
+        // 0x13, 0x03, 0x13, 0x03, // addi x6 x6 1  
+        // 0x6f, 0x00, 0x00, 0x00  // j    0x1000
     };
     uint64_t x5_value = 0x00000000;
     uint64_t x6_value = 0x00000001;
@@ -337,10 +340,12 @@ void test_exec_jump_instruction_instruction_number() {
     // Write instructions to memory
     write_memory(sim, 0x1000, sizeof(instructions), instructions);
     // Execute the instructions
-    int res = spike_start(sim, 0x1000, 0x1020, 0, 6);
+    int res = spike_start(sim, 0x1000, 0x1200, 0, 6);
     // printf("%s\n",sp_strerror(res));
     // Verify return values
     ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_X5, 3);
+    ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_X6, 3);
+    ASSERT_EQUALS_REGISTER(sim, SPIKE_RISCV_REG_X7, 1);
     ASSERT_EQUALS(res, SP_ERR_MAX_COUNT);
     // Teardown
     release_sim(sim);

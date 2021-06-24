@@ -34,7 +34,7 @@ extern "C" {
 typedef enum {
     // ___ GENERAL REGISTERS ____
 
-    SPIKE_RISCV_REG_X0,
+    SPIKE_RISCV_REG_X0 = 0,
     SPIKE_RISCV_REG_X1,
     SPIKE_RISCV_REG_X2,
     SPIKE_RISCV_REG_X3, 
