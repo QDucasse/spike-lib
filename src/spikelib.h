@@ -113,22 +113,23 @@ typedef enum {
 // =====================================
 
 typedef enum {
-    SP_ERR_OK = 0,           // No error: everything was fine
-    SP_ERR_TIMEOUT,          // Execution timeout
-    SP_ERR_MAX_COUNT,        // Max number of instructions reached
-    SP_ERR_NO_MEM,           // Out-Of-Memory error
-    SP_ERR_READ_UNMAPPED,    // READ  on unmapped memory
-    SP_ERR_WRITE_UNMAPPED,   // WRITE on unmapped memory
-    SP_ERR_FETCH_UNMAPPED,   // FETCH on unmapped memory
-    SP_ERR_READ_PROT,        // READ  PROTECTION violation
-    SP_ERR_WRITE_PROT,       // WRITE PROTECTION violation
-    SP_ERR_FETCH_PROT,       // FETCH PROTECTION violation
-    SP_ERR_READ_MISALIGNED,  // Misaligned READ
-    SP_ERR_WRITE_MISALIGNED, // Misaligned WRITE
-    SP_ERR_FETCH_MISALIGNED, // Misaligned FETCH
-    SP_ERR_REGID_INVALID,    // Invalid Register id
-    SP_ERR_INSN_INVALID,     // Invalid Instruction
-    SP_ERR_MAP_INVALID,      // Invalid memory mapping
-    SP_ERR_UNKNOWN           // Other error
+    SP_ERR_OK = 0,            // No error: everything was fine
+    SP_ERR_TIMEOUT,           // Execution timeout
+    SP_ERR_MAX_COUNT,         // Max number of instructions reached
+    SP_ERR_NO_MEM,            // Out-Of-Memory error
+    SP_ERR_READ_UNMAPPED,     // READ  on unmapped memory
+    SP_ERR_WRITE_UNMAPPED,    // WRITE on unmapped memory
+    SP_ERR_FETCH_UNMAPPED,    // FETCH on unmapped memory
+    SP_ERR_READ_PROT,         // READ  PROTECTION violation
+    SP_ERR_WRITE_PROT,        // WRITE PROTECTION violation
+    SP_ERR_FETCH_PROT,        // FETCH PROTECTION violation
+    SP_ERR_READ_MISALIGNED,   // Misaligned READ
+    SP_ERR_WRITE_MISALIGNED,  // Misaligned WRITE
+    SP_ERR_FETCH_MISALIGNED,  // Misaligned FETCH
+    SP_ERR_REGID_INVALID,     // Invalid Register id
+    SP_ERR_INSN_INVALID,      // Invalid Instruction
+    SP_ERR_MAP_INVALID,       // Invalid memory mapping
+    SP_ERR_INVALID_SIMULATOR, // Invalid or uninitialized simulator
+    SP_ERR_UNKNOWN            // Other error
 } sp_err;
 

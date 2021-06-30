@@ -116,6 +116,8 @@ EXPORT const char* sp_strerror(int code) {
             return "Write to unaligned memory (SP_ERR_WRITE_MISALIGNED)";
         case SP_ERR_FETCH_MISALIGNED:
             return "Fetch from unaligned memory (SP_ERR_FETCH_MISALIGNED)";
+        case SP_ERR_INVALID_SIMULATOR:
+            return "Simulator invalid (uninitialized) (SP_ERR_INVALID_SIMULATOR)";
         // ______ Unknown _______
         default:
             return "Unknown error code";
@@ -182,6 +184,9 @@ EXPORT void release_sim(void* sim) {
 */
 EXPORT int read_register(void* sim, int regid, void* value) {
     sim_t* real_sim = (sim_t*) sim;
+    if (real_sim == NULL) {
+        return SP_ERR_INVALID_SIMULATOR;
+    }
     switch(regid) {
         // PC
         case SPIKE_RISCV_REG_PC: {
@@ -268,6 +273,9 @@ EXPORT int read_register(void* sim, int regid, void* value) {
 
 EXPORT int write_register(void* sim, int regid, void* value) {  
     sim_t* real_sim = (sim_t*) sim;
+    if (real_sim == NULL) {
+        return SP_ERR_INVALID_SIMULATOR;
+    }
     switch(regid) {
         // PC
         case SPIKE_RISCV_REG_PC: {
@@ -354,6 +362,9 @@ EXPORT int write_register(void* sim, int regid, void* value) {
 
 EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value) {
     sim_t* real_sim = (sim_t*) sim;
+    if (real_sim == NULL) {
+        return SP_ERR_INVALID_SIMULATOR;
+    }
     // Check alignment
     if ((int) address % 8 != 0) return SP_ERR_READ_MISALIGNED;
     // Switch on the size to call the proper function
@@ -381,6 +392,9 @@ EXPORT int read_memory(void* sim, uint64_t address, uint64_t size, void* value) 
 
 EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value) {
     sim_t* real_sim = (sim_t*) sim;
+    if (real_sim == NULL) {
+        return SP_ERR_INVALID_SIMULATOR;
+    }
     // Check alignment
     if ((int) address % 8 != 0) return SP_ERR_WRITE_MISALIGNED;
     // Switch on the size to call the proper function
@@ -409,6 +423,9 @@ EXPORT int write_memory(void* sim, uint64_t address, uint64_t size, void* value)
 
 EXPORT int get_memory_exception_cause(void* sim) {
     sim_t* real_sim = (sim_t*) sim;
+    if (real_sim == NULL) {
+        return SP_ERR_INVALID_SIMULATOR;
+    }
     processor_t* core = real_sim->get_core(0);
     state_t* state = core->get_state();
     sp_err error = SP_ERR_OK;
@@ -435,6 +452,9 @@ EXPORT int get_memory_exception_cause(void* sim) {
 
 EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout_us, size_t max_instruction_number) {
     sim_t* real_sim = (sim_t*) sim;
+    if (real_sim == NULL) {
+        return SP_ERR_INVALID_SIMULATOR;
+    }
     processor_t* core = real_sim->get_core(0);
     state_t* state = core->get_state();
 
@@ -448,7 +468,9 @@ EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, 
     bool has_reached_end   = false;
     bool has_mem_exception = false;
     int instruction_count = 0;
+    uint64_t previous_pc = 0;
     while(!has_reached_end && !has_timed_out && !has_reached_count && !has_mem_exception) {
+        previous_pc = state->pc;
         core->step(1);
         // Check time out, instruction count and final pc
         has_timed_out     = !(((uint64_t)(get_clock_realtime() - current_time_us) < timeout_us) || timeout_us == 0);
@@ -460,7 +482,18 @@ EXPORT int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, 
     if (has_reached_end)   return SP_ERR_OK;
     if (has_reached_count) return SP_ERR_MAX_COUNT;
     if (has_timed_out)     return SP_ERR_TIMEOUT;
-    if (has_mem_exception) return get_memory_exception_cause(sim);
+    if (has_mem_exception) {
+        // Return an error code from the mcause value
+        int error_code = get_memory_exception_cause(sim);
+        // Set the pc to the one that caused the exception
+        reg_t previous_pc = state->mepc;
+        state->pc = previous_pc;
+        // Reallow interruptions (by default when handling an exception, the processor refuses to take anymore)
+        reg_t s = state->mstatus;
+        s = set_field(s, MSTATUS_MIE, 1);
+        core->set_csr(CSR_MSTATUS, s);
+        return error_code;
+    }
 
     return SP_ERR_UNKNOWN;
 }
