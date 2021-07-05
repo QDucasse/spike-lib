@@ -56,5 +56,17 @@ All functions that are *exposed* need to be marked as `EXPORT` before their defi
 
 **Memory Access:**
 
-- **`int read_memory(void* sim, uint64_t address, uint64_t size, void* value)`**
+- **`int read_memory(void* sim, uint64_t address, uint64_t size, void* value)`** reads memory starting at the address and for a given size and stores the result in the buffer.
+- **`int write_memory(void* sim, uint64_t address, uint64_t size, void* value)`** writes the buffer to the given address in memory.
 
+**Simulation Runtime:**
+
+- **`int spike_start(void* sim, uint64_t begin_address, uint64_t end_address, uint64_t timeout, size_t max_instruction_number)`** is the main simulation function. It starts the simulation by looping on the underlying `step` function of the debugger and stops when one of the conditions is reached:
+  - `end_address` is reached, this means that the PC is equal to this address (but the instruction stored at this address will not be executed!).
+  - `timeout` is reached, this is measured through the `gettimeofday` function (setting 0 means this condition will not be taken in consideration).
+  - `max_instruction_number` is reached, counting the instructions executed (setting 0 means this condition will not be taken in consideration).
+  - any memory error will stop execution and return the corresponding code (e.g. invalid instruction, misaligned access, ...).
+
+**Error Codes:**
+
+- **`const char* sp_strerror(int code)`** transforms the error code (`int` from an `enum`) to a string with the reason.
