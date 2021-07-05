@@ -15,8 +15,7 @@ typedef struct {
 } memory_region;
 
 extern "C" {
-    // void* doInitialize_sim(); // when using C wrapper
-    EXPORT void* initialize_sim_with_isa(memory_region* memories, int regions_number, const char* isa);
+    EXPORT void* initialize_sim_with_isa(memory_region* memories, int regions_number, const char* isa); // IMAFD
     EXPORT void* initialize_sim(memory_region* memories, int regions_number);
     EXPORT int read_register(void* sim, int regid, void* value);
     EXPORT int write_register(void* sim, int regid, void* value);

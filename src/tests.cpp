@@ -248,7 +248,7 @@ void test_mem_read_write_18_bytes() {
 void test_exec_add_instruction() {
     // COMPLETE add x5, x6, x7
     void* sim = setup_simulation();
-    uint32_t instr_add = 0x007302B3;
+    uint32_t instr_add = 0x007302B3; 
     // Write the two values to add
     uint64_t x5_value = 0x00000000;
     uint64_t x6_value = 0x11110000;
