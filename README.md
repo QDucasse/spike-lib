@@ -51,8 +51,8 @@ All functions that are *exposed* need to be marked as `EXPORT` before their defi
 
 **Register Access:**
 
-- **`int read_register(void* sim, int regid, void* value)` ** reads the contents of a given register (X0-X31, PC or F0-F31) and writes the value to the given buffer. 
-- **`int write_register(void* sim, int regid, void* value)` ** writes the contents of value to the given register.
+- **`int read_register(void* sim, int regid, void* value)`** reads the contents of a given register (X0-X31, PC or F0-F31) and writes the value to the given buffer. 
+- **`int write_register(void* sim, int regid, void* value)`** writes the contents of value to the given register.
 
 **Memory Access:**
 
